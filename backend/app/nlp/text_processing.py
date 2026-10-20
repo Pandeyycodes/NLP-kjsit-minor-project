@@ -4,7 +4,8 @@ import re
 
 # Python's \w misses Devanagari vowel signs and virama, so include the block
 # explicitly (minus the danda punctuation marks U+0964/U+0965), plus ZWNJ/ZWJ.
-_WORD = r"[\wऀ-ॣ०-ॿ‌‍]+"
+WORD_CHAR = r"[\wऀ-ॣ०-ॿ‌‍]"
+_WORD = WORD_CHAR + "+"
 # Words may be joined by apostrophes or hyphens; digits by . or , (3.5, 1,000).
 _TOKEN_RE = re.compile(rf"{_WORD}(?:(?:['’\-]|(?<=\d)[.,](?=\d)){_WORD})*|\S")
 
