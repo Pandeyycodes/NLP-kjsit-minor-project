@@ -4,9 +4,10 @@ Samjho is a rule-based NLP document simplification and information extraction pr
 
 ## Current milestone
 
-Step 1 provides only the backend foundation: a minimal FastAPI app with a root endpoint and a health check, plus tests. Text processing, extraction, and the frontend come in later steps.
+- `backend/`: FastAPI app with rule-based text processing, phrase simplification (English, Hindi, Hinglish), information extraction, `POST /api/explain` for pasted text and `POST /api/process-pdf` for text-based PDF uploads (up to 5 MB, read in memory with PyMuPDF; scanned PDFs are not supported).
+- `frontend/`: React + Vite + TypeScript website that accepts pasted text or a PDF and shows the explanation, extracted details and a checklist.
 
-## Setup (Windows PowerShell)
+## Backend setup (Windows PowerShell)
 
 ```powershell
 cd backend
@@ -32,3 +33,20 @@ python -m uvicorn app.main:app --reload
 - API root: http://127.0.0.1:8000/
 - Health check: http://127.0.0.1:8000/health
 - API docs: http://127.0.0.1:8000/docs
+
+## Frontend (Windows PowerShell, in a second terminal)
+
+Requires Node.js. Keep the backend running.
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:5173. The backend URL defaults to `http://127.0.0.1:8000`; to change it, copy `frontend/.env.example` to `frontend/.env.local` and edit `VITE_API_BASE_URL`.
+
+```powershell
+npm test          # frontend tests
+npm run build     # production build into frontend/dist
+```

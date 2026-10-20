@@ -1,16 +1,33 @@
+import os
 from typing import Literal
 
-from fastapi import FastAPI
-from pydantic import BaseModel, Field, field_validator
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.nlp.document_explainer import explain_document
 from app.nlp.information_extraction import extract_information
 from app.nlp.simplification import simplify_text
 from app.nlp.text_processing import normalize_text, split_sentences, tokenize_text
+from app.pdf_extraction import MAX_PDF_BYTES, PdfError, extract_pdf_text
 
 MAX_TEXT_LENGTH = 20_000
+Language = Literal["en", "hi", "hinglish"]
+
+# Local Vite dev (5173) and preview (4173) servers. Override with a
+# comma-separated CORS_ORIGINS environment variable.
+DEFAULT_CORS_ORIGINS = (
+    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173"
+)
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", DEFAULT_CORS_ORIGINS).split(",")
 
 app = FastAPI(title="Samjho")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
 
 
 class TextInput(BaseModel):
@@ -25,7 +42,7 @@ class TextInput(BaseModel):
 
 
 class LanguageTextInput(TextInput):
-    language: Literal["en", "hi", "hinglish"] = "en"
+    language: Language = "en"
 
 
 @app.get("/")
@@ -65,3 +82,37 @@ def extract_info(payload: LanguageTextInput):
 @app.post("/api/explain")
 def explain(payload: LanguageTextInput):
     return explain_document(payload.text, payload.language)
+
+
+@app.post("/api/process-pdf")
+def process_pdf(file: UploadFile = File(...), language: Language = Form("en")):
+    try:
+        # Read at most one byte past the limit; the upload is never written to our storage.
+        data = file.file.read(MAX_PDF_BYTES + 1)
+    finally:
+        file.file.close()
+    if len(data) > MAX_PDF_BYTES:
+        raise HTTPException(413, "The PDF is larger than the 5 MB limit.")
+
+    try:
+        text, page_count = extract_pdf_text(data)
+    except PdfError as error:
+        raise HTTPException(error.status_code, str(error))
+    if not text.strip():
+        raise HTTPException(
+            422,
+            "No readable text was found in this PDF. It may be a scanned or image-only "
+            "document, which Samjho cannot read yet.",
+        )
+
+    # Same text and language validation as POST /api/explain.
+    try:
+        payload = LanguageTextInput(text=text, language=language)
+    except ValidationError:
+        raise HTTPException(
+            422,
+            f"This PDF contains {len(text):,} characters of text. "
+            f"The limit is {MAX_TEXT_LENGTH:,}.",
+        )
+    result = explain_document(payload.text, payload.language)
+    return {**result, "pdf": {"page_count": page_count, "character_count": len(text)}}
