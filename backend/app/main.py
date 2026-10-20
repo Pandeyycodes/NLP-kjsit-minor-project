@@ -3,6 +3,7 @@ from typing import Literal
 from fastapi import FastAPI
 from pydantic import BaseModel, Field, field_validator
 
+from app.nlp.document_explainer import explain_document
 from app.nlp.information_extraction import extract_information
 from app.nlp.simplification import simplify_text
 from app.nlp.text_processing import normalize_text, split_sentences, tokenize_text
@@ -59,3 +60,8 @@ def simplify(payload: LanguageTextInput):
 @app.post("/api/extract-info")
 def extract_info(payload: LanguageTextInput):
     return extract_information(payload.text, payload.language)
+
+
+@app.post("/api/explain")
+def explain(payload: LanguageTextInput):
+    return explain_document(payload.text, payload.language)
