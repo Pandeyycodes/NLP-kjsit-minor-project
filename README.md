@@ -42,9 +42,12 @@ Requirements: Python 3.11+ (needed by PyMuPDF) and Node.js 22.12+ (needed by Vit
 cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 python -m uvicorn app.main:app --reload
 ```
+
+`requirements.txt` lists only what the app needs to run (this is what Vercel installs);
+`requirements-dev.txt` adds the test tools.
 
 If activation is blocked, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once and
 activate again. The API runs at http://127.0.0.1:8000 and interactive docs are at
@@ -58,9 +61,9 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. The frontend calls `http://127.0.0.1:8000` by default. To use a
-different backend, copy `frontend/.env.example` to `frontend/.env.local` and change
-`VITE_API_BASE_URL`.
+Open http://localhost:5173. During development the frontend calls `http://127.0.0.1:8000`;
+a production build calls `/api/...` on its own domain. To point it somewhere else, copy
+`frontend/.env.example` to `frontend/.env.local` and set `VITE_API_BASE_URL`.
 
 ## Running the tests and build
 
@@ -89,7 +92,7 @@ npm run lint
 | `POST /api/process-pdf` | form fields `file` (PDF) and `language` | same as `/api/explain` plus `pdf.page_count` |
 
 `language` is `en`, `hi` or `hinglish` (default `en`). Text is limited to 20,000 characters
-and PDFs to 5 MB. Invalid input returns HTTP 422 (413 for files over 5 MB, 415 for non-PDF
+and PDFs to 4 MB. Invalid input returns HTTP 422 (413 for files over 4 MB, 415 for non-PDF
 files) with a readable message.
 
 Example:
@@ -143,16 +146,36 @@ limits in mind and always confirm important details in the original document.
 - Only **text-based PDFs** are supported. Scanned or photographed documents contain images,
   not text, and Samjho has **no OCR**; such files return "No readable text was found".
 - Password-protected, damaged or empty PDFs are rejected with a message.
-- Files over 5 MB or with more than 20,000 characters of text are rejected.
+- Files over 4 MB or with more than 20,000 characters of text are rejected. (The limit is
+  4 MB because Vercel Functions accept request bodies of at most 4.5 MB.)
 - Text order follows the PDF's internal layout, so multi-column pages and tables may be read
   in an unexpected order.
 - Uploaded files are processed in memory and never saved by Samjho. (While a request is
   being handled, the web framework may briefly buffer a large upload in a temporary file,
   which it deletes when the request ends.)
 
-## Configuration for deployment
+## Deployment (Vercel)
 
-- `CORS_ORIGINS` (backend): comma-separated list of allowed frontend origins, for example
-  `https://samjho.example.com`. The default allows only the local Vite servers on ports
-  5173 and 4173.
-- `VITE_API_BASE_URL` (frontend, at build time): the public URL of the backend.
+The repository deploys as **one Vercel project** using
+[Vercel Services](https://vercel.com/docs/services) (beta, available on all plans). The root
+`vercel.json` defines two services and routes requests between them:
+
+| Path | Goes to |
+|---|---|
+| `/api/*`, `/health`, `/docs`, `/openapi.json` | `backend` service: FastAPI (`backend/app/main.py`) as a Vercel Function, Python 3.13 (`backend/.python-version`) |
+| everything else | `frontend` service: the Vite build of `frontend/` |
+
+Because the website and the API share one domain, no environment variables are needed and
+CORS is not involved. To deploy, import the GitHub repository at https://vercel.com/new,
+leave **Root Directory** at the repository root, and click **Deploy**; Vercel reads
+`vercel.json` and builds both services.
+
+Optional settings:
+
+- `VITE_API_BASE_URL` (frontend, read at build time): only if the API is hosted on a
+  different domain.
+- `CORS_ORIGINS` (backend): comma-separated allowed origins, only needed when the frontend is
+  on a different domain from the API. The default allows the local Vite servers.
+
+To run the deployment locally exactly as Vercel routes it: `npx vercel dev -L` from the
+repository root, then open http://localhost:3000.

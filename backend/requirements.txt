@@ -1,6 +1,4 @@
 fastapi
 uvicorn
-pytest
-httpx
 pymupdf
 python-multipart

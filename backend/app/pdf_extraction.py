@@ -2,7 +2,10 @@
 
 import pymupdf
 
-MAX_PDF_BYTES = 5 * 1024 * 1024
+# Vercel Functions accept request bodies of at most 4.5 MB, so a 4 MB file
+# (plus multipart form overhead) is the largest that can always get through.
+MAX_PDF_BYTES = 4 * 1024 * 1024
+PDF_LIMIT_TEXT = f"{MAX_PDF_BYTES // (1024 * 1024)} MB"
 PDF_SIGNATURE = b"%PDF-"
 
 

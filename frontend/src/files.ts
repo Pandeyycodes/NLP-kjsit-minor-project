@@ -1,4 +1,4 @@
-import { MAX_PDF_BYTES } from './api'
+import { MAX_PDF_BYTES, PDF_LIMIT_TEXT } from './api'
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} bytes`
@@ -12,7 +12,7 @@ export function checkPdfFile(file: File): string | null {
   if (!looksLikePdf) return `“${file.name}” is not a PDF. Please choose a .pdf file.`
   if (file.size === 0) return `“${file.name}” is empty.`
   if (file.size > MAX_PDF_BYTES) {
-    return `“${file.name}” (${formatBytes(file.size)}) is larger than the 5 MB limit.`
+    return `“${file.name}” (${formatBytes(file.size)}) is larger than the ${PDF_LIMIT_TEXT} limit.`
   }
   return null
 }

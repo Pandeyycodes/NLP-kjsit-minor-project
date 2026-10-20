@@ -107,15 +107,15 @@ describe('PDF upload', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('rejects PDFs over 5 MB before uploading', async () => {
+  it('rejects PDFs over 4 MB before uploading', async () => {
     const user = userEvent.setup()
     render(<App />)
     await choosePdfMode(user)
 
     await user.upload(fileInput(), pdfFile('big.pdf', MAX_PDF_BYTES + 1))
-    expect(screen.getByText('“big.pdf” (5.0 MB) is larger than the 5 MB limit.')).toBeInTheDocument()
+    expect(screen.getByText('“big.pdf” (4.0 MB) is larger than the 4 MB limit.')).toBeInTheDocument()
     await user.upload(fileInput(), pdfFile('bigger.pdf', 7.5 * 1024 * 1024))
-    expect(screen.getByText('“bigger.pdf” (7.5 MB) is larger than the 5 MB limit.')).toBeInTheDocument()
+    expect(screen.getByText('“bigger.pdf” (7.5 MB) is larger than the 4 MB limit.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Explain Document' }))
     expect(fetchMock).not.toHaveBeenCalled()
   })

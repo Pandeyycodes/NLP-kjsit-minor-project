@@ -141,7 +141,14 @@ def test_missing_file_is_rejected():
 def test_oversized_upload_is_rejected():
     response = upload(b"%PDF-1.7\n" + b"0" * MAX_PDF_BYTES)
     assert response.status_code == 413
-    assert "5 MB" in response.json()["detail"]
+    assert "4 MB" in response.json()["detail"]
+
+
+def test_upload_limit_fits_within_vercel_request_body_limit():
+    # Vercel Functions reject request bodies over 4.5 MB before the app sees them.
+    from app.main import MAX_UPLOAD_REQUEST_BYTES
+
+    assert MAX_UPLOAD_REQUEST_BYTES < 4.5 * 1000 * 1000
 
 
 def test_blank_pdf_reports_no_readable_text():

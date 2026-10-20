@@ -10,7 +10,7 @@ from app.nlp.document_explainer import explain_document
 from app.nlp.information_extraction import extract_information
 from app.nlp.simplification import simplify_text
 from app.nlp.text_processing import normalize_text, split_sentences, tokenize_text
-from app.pdf_extraction import MAX_PDF_BYTES, PdfError, extract_pdf_text
+from app.pdf_extraction import MAX_PDF_BYTES, PDF_LIMIT_TEXT, PdfError, extract_pdf_text
 
 MAX_TEXT_LENGTH = 20_000
 Language = Literal["en", "hi", "hinglish"]
@@ -28,7 +28,7 @@ def parse_origins(value: str) -> list[str]:
 
 
 CORS_ORIGINS = parse_origins(os.getenv("CORS_ORIGINS", DEFAULT_CORS_ORIGINS))
-# A 5 MB PDF plus room for the multipart form headers.
+# The largest allowed PDF plus room for the multipart form headers.
 MAX_UPLOAD_REQUEST_BYTES = MAX_PDF_BYTES + 64 * 1024
 
 app = FastAPI(title="Samjho")
@@ -43,7 +43,7 @@ async def reject_large_uploads(request: Request, call_next):
         length = request.headers.get("content-length", "")
         if length.isdigit() and int(length) > MAX_UPLOAD_REQUEST_BYTES:
             return JSONResponse(
-                {"detail": "The PDF is larger than the 5 MB limit."}, status_code=413
+                {"detail": f"The PDF is larger than the {PDF_LIMIT_TEXT} limit."}, status_code=413
             )
     return await call_next(request)
 
@@ -118,7 +118,7 @@ def process_pdf(file: UploadFile = File(...), language: Language = Form("en")):
     finally:
         file.file.close()
     if len(data) > MAX_PDF_BYTES:
-        raise HTTPException(413, "The PDF is larger than the 5 MB limit.")
+        raise HTTPException(413, f"The PDF is larger than the {PDF_LIMIT_TEXT} limit.")
 
     try:
         text, page_count = extract_pdf_text(data)

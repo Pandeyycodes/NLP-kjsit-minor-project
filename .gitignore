@@ -16,6 +16,9 @@ __pycache__/
 # Node
 node_modules/
 
+# Vercel CLI local cache (created by `vercel dev` / `vercel link`)
+.vercel/
+
 # Build artifacts
 build/
 dist/

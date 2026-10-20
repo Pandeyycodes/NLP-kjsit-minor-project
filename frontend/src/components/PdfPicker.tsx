@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
-import { MAX_PDF_BYTES } from '../api'
+import { PDF_LIMIT_TEXT } from '../api'
 import { formatBytes } from '../files'
 
 interface Props {
@@ -85,7 +85,7 @@ export default function PdfPicker({ file, error, onSelect }: Props) {
           <span className="field-error">{error}</span>
         ) : (
           <span>
-            Text-based PDFs up to {formatBytes(MAX_PDF_BYTES)}. Scanned or image-only PDFs cannot
+            Text-based PDFs up to {PDF_LIMIT_TEXT}. Scanned or image-only PDFs cannot
             be read. The file is not stored.
           </span>
         )}

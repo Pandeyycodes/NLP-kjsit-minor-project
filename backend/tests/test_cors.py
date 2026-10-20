@@ -19,7 +19,7 @@ def test_oversized_upload_is_refused_before_reading_and_keeps_cors_headers():
         headers={"Origin": "http://localhost:5173"},
     )
     assert response.status_code == 413
-    assert response.json() == {"detail": "The PDF is larger than the 5 MB limit."}
+    assert response.json() == {"detail": "The PDF is larger than the 4 MB limit."}
     assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
 
 
