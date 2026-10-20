@@ -1,8 +1,26 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.main import DEFAULT_CORS_ORIGINS, MAX_PDF_BYTES, app, parse_origins
 
 client = TestClient(app)
+
+
+def test_parse_origins_ignores_spaces_and_empty_entries():
+    assert parse_origins(" https://a.example , https://b.example/,,") == [
+        "https://a.example", "https://b.example",
+    ]
+    assert "http://localhost:5173" in parse_origins(DEFAULT_CORS_ORIGINS)
+
+
+def test_oversized_upload_is_refused_before_reading_and_keeps_cors_headers():
+    response = client.post(
+        "/api/process-pdf",
+        files={"file": ("big.pdf", b"%PDF-1.7\n" + b"0" * (MAX_PDF_BYTES + 100_000))},
+        headers={"Origin": "http://localhost:5173"},
+    )
+    assert response.status_code == 413
+    assert response.json() == {"detail": "The PDF is larger than the 5 MB limit."}
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
 
 
 def preflight(origin):

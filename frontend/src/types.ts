@@ -20,6 +20,8 @@ export interface DeadlineFinding extends DateFinding {
 
 export interface FeeFinding extends Finding {
   amount: number
+  /** Upper end of a range such as "Rs. 500-1000", otherwise null. */
+  amount_max: number | null
   currency: string
 }
 

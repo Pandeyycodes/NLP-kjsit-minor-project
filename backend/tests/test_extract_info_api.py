@@ -26,7 +26,7 @@ def test_extract_info_sample():
     }]
     assert body["dates"][0]["rule"] == "date_day_month_year"
     assert body["fees"] == [{
-        "value": "₹500", "amount": 500, "currency": "INR",
+        "value": "₹500", "amount": 500, "amount_max": None, "currency": "INR",
         "rule": "currency_before_amount", "source": second,
     }]
     assert body["eligibility"] == [

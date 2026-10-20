@@ -216,7 +216,7 @@ textarea {
 }
 
 textarea::placeholder {
-  color: #7d8088;
+  color: #696d75;
 }
 
 textarea:focus-visible {
@@ -545,6 +545,10 @@ textarea[aria-invalid='true'] {
   display: flex;
   flex-direction: column;
   gap: 28px;
+}
+
+.results-header h2:focus {
+  outline: none;
 }
 
 .results-header {

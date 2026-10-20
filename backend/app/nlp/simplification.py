@@ -5,6 +5,7 @@ import re
 import unicodedata
 from pathlib import Path
 
+from app.nlp.negation import is_negated
 from app.nlp.text_processing import WORD_CHAR
 
 LANGUAGES = ("en", "hi", "hinglish")
@@ -64,6 +65,8 @@ def simplify_text(text: str, language: str = "en") -> dict:
 
     def replace(match: re.Match) -> str:
         original = match.group(0)
+        if is_negated(match.string, match.start(), language):
+            return original  # e.g. "No one is required to" must not become "No one must"
         key = " ".join(original.lower().split())
         replacement = _match_case(original, rules[key])
         transformations.append(

@@ -36,6 +36,7 @@
       {
         "value": "₹500",
         "amount": 500,
+        "amount_max": null,
         "currency": "INR",
         "rule": "currency_before_amount",
         "source": "The application fee is ₹500."

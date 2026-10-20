@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent } from 'react'
+import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { MAX_PDF_BYTES } from '../api'
 import { formatBytes } from '../files'
 
@@ -11,6 +11,18 @@ interface Props {
 export default function PdfPicker({ file, error, onSelect }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
+
+  // A file dropped outside the drop area would make the browser open it and
+  // leave the page, so ignore drops anywhere else while the picker is shown.
+  useEffect(() => {
+    const ignore = (event: Event) => event.preventDefault()
+    window.addEventListener('dragover', ignore)
+    window.addEventListener('drop', ignore)
+    return () => {
+      window.removeEventListener('dragover', ignore)
+      window.removeEventListener('drop', ignore)
+    }
+  }, [])
 
   function handleDrop(event: DragEvent) {
     event.preventDefault()

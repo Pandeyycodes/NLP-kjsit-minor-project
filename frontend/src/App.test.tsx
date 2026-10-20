@@ -135,6 +135,16 @@ describe('results', () => {
     }
   })
 
+  it('moves focus to the results so keyboard users land on them', async () => {
+    const user = userEvent.setup()
+    fetchMock.mockResolvedValue(jsonResponse(RESPONSE))
+    render(<App />)
+
+    await explain(user)
+
+    expect(await screen.findByRole('heading', { name: 'Results' })).toHaveFocus()
+  })
+
   it('shows phrase changes and date warnings returned by the backend', async () => {
     const user = userEvent.setup()
     fetchMock.mockResolvedValue(

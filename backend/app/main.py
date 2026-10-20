@@ -1,8 +1,9 @@
 import os
 from typing import Literal
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.nlp.document_explainer import explain_document
@@ -19,9 +20,34 @@ Language = Literal["en", "hi", "hinglish"]
 DEFAULT_CORS_ORIGINS = (
     "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173"
 )
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", DEFAULT_CORS_ORIGINS).split(",")
+
+
+def parse_origins(value: str) -> list[str]:
+    """Split a comma-separated origin list, ignoring spaces and empty entries."""
+    return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()]
+
+
+CORS_ORIGINS = parse_origins(os.getenv("CORS_ORIGINS", DEFAULT_CORS_ORIGINS))
+# A 5 MB PDF plus room for the multipart form headers.
+MAX_UPLOAD_REQUEST_BYTES = MAX_PDF_BYTES + 64 * 1024
 
 app = FastAPI(title="Samjho")
+
+
+# Registered before CORS so the CORS middleware wraps it and its 413 reply
+# still carries CORS headers the browser can read.
+@app.middleware("http")
+async def reject_large_uploads(request: Request, call_next):
+    """Refuse an oversized upload from its Content-Length, before reading the body."""
+    if request.url.path == "/api/process-pdf":
+        length = request.headers.get("content-length", "")
+        if length.isdigit() and int(length) > MAX_UPLOAD_REQUEST_BYTES:
+            return JSONResponse(
+                {"detail": "The PDF is larger than the 5 MB limit."}, status_code=413
+            )
+    return await call_next(request)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,

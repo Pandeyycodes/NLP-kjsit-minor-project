@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import type { DateFinding, ExplainResponse, Finding, Language } from '../types'
 import Checklist from './Checklist'
 import CopyButton from './CopyButton'
@@ -63,11 +63,17 @@ export default function Results({ result, fileName }: Props) {
   const deadlineKeys = new Set(facts.deadlines.map((d) => `${d.value}|${d.source}`))
   const otherDates = facts.dates.filter((d) => !deadlineKeys.has(`${d.value}|${d.source}`))
   const unsupported = result.sentences.filter((s) => s.status === 'unsupported').length
+  const headingRef = useRef<HTMLHeadingElement>(null)
+
+  // Move keyboard and screen-reader focus to the new results.
+  useEffect(() => headingRef.current?.focus(), [])
 
   return (
     <div className="results">
       <div className="results-header">
-        <h2>Results</h2>
+        <h2 ref={headingRef} tabIndex={-1}>
+          Results
+        </h2>
         <p className="meta">
           {result.pdf && fileName && (
             <>

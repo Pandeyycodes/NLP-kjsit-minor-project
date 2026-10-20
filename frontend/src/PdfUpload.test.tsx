@@ -82,6 +82,17 @@ describe('PDF upload', () => {
     expect(screen.getByText('notice.pdf')).toBeInTheDocument()
   })
 
+  it('ignores a file dropped outside the drop area instead of leaving the page', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await choosePdfMode(user)
+
+    // fireEvent returns false when the default action (opening the file) was prevented.
+    expect(fireEvent.drop(document.body, { dataTransfer: { files: [pdfFile()] } })).toBe(false)
+    expect(fireEvent.dragOver(document.body)).toBe(false)
+    expect(screen.queryByText('notice.pdf')).not.toBeInTheDocument()
+  })
+
   it('rejects files that are not PDFs', async () => {
     const user = userEvent.setup({ applyAccept: false })
     render(<App />)

@@ -5,7 +5,9 @@ and keeps the sentence it was found in, so it can be checked by a person."""
 import re
 import unicodedata
 from datetime import date
+from decimal import Decimal
 
+from app.nlp.negation import is_negated
 from app.nlp.text_processing import WORD_CHAR, split_sentences
 
 LANGUAGES = ("en", "hi", "hinglish")
@@ -177,13 +179,29 @@ def _deadline_cue(sentence: str, match: re.Match, previous_end: int, language: s
 
 # ------------------------------------------------------------------- fees
 
-_AMOUNT = r"(?P<amount>\d+(?:,\d+)*(?:\.\d+)?)"
+_NUMBER = r"\d+(?:,\d+)*(?:\.\d+)?"
+# Indian amount words. They are kept in the value so "₹1.5 lakh" is never shown as "₹1.5".
+AMOUNT_UNITS = {
+    _nfc(unit): multiplier
+    for unit, multiplier in {
+        "thousand": 10**3, "k": 10**3, "हज़ार": 10**3, "हजार": 10**3,
+        "lakh": 10**5, "lakhs": 10**5, "lac": 10**5, "lacs": 10**5, "lpa": 10**5, "लाख": 10**5,
+        "crore": 10**7, "crores": 10**7, "cr": 10**7, "करोड़": 10**7,
+    }.items()
+}
+_UNIT = (
+    r"(?:\s*(?P<unit>"
+    + "|".join(sorted(map(re.escape, AMOUNT_UNITS), key=len, reverse=True))
+    + rf"){_END})?"
+)
+# "Rs. 500-1000": keep the whole range in the value.
+_AMOUNT = rf"(?P<amount>{_NUMBER})(?:\s*[-–]\s*(?P<amount_max>{_NUMBER}))?{_UNIT}"
 FEE_PATTERNS = [
-    # ₹500, Rs. 500, Rs 1,500/-, INR 500, रु. 500
+    # ₹500, Rs. 500, Rs 1,500/-, INR 500, रु. 500, ₹1.5 lakh, Rs. 500-1000
     ("currency_before_amount", re.compile(
         rf"(?:₹|{_START}(?:rs|inr|रु|रू)\.?)\s*{_AMOUNT}(?:\s*/-)?", re.IGNORECASE
     )),
-    # 500 rupees, 500 रुपये
+    # 500 rupees, 500 रुपये, 2 lakh rupees
     ("amount_before_currency", re.compile(
         rf"(?<![\d,.]){_AMOUNT}\s*(?:/-\s*)?(?:rupees|rupaye|rupaiye|रुपये|रुपए|रुपया){_END}",
         re.IGNORECASE,
@@ -191,9 +209,12 @@ FEE_PATTERNS = [
 ]
 
 
-def _to_number(amount: str):
-    number = float(amount.replace(",", ""))
-    return int(number) if number.is_integer() else number
+def _to_number(number: str | None, unit: str | None):
+    """Convert "1,500" or "1.5" + "lakh" to a number. Decimal avoids 2.3 lakh = 229999.99…"""
+    if number is None:
+        return None
+    value = Decimal(number.replace(",", "")) * AMOUNT_UNITS.get((unit or "").lower(), 1)
+    return int(value) if value == value.to_integral_value() else float(value)
 
 
 # ----------------------------------------- eligibility, documents, actions
@@ -313,7 +334,9 @@ def extract_information(text: str, language: str = "en") -> dict:
 
         for rule, match in _non_overlapping(FEE_PATTERNS, sentence):
             result["fees"].append({
-                "value": match.group(0), "amount": _to_number(match["amount"]),
+                "value": match.group(0),
+                "amount": _to_number(match["amount"], match["unit"]),
+                "amount_max": _to_number(match["amount_max"], match["unit"]),
                 "currency": "INR", "rule": rule, "source": sentence,
             })
 
@@ -328,6 +351,10 @@ def extract_information(text: str, language: str = "en") -> dict:
         )
         result["action_items"] += _findings(
             ACTION_PATTERNS[language], sentence, "action_phrase",
-            skip=_is_noun_use if language == "en" else None,
+            skip=lambda sentence, match: (
+                # "Do not bring phones" is a prohibition, not an action to complete.
+                is_negated(sentence, match.start(), language)
+                or (language == "en" and _is_noun_use(sentence, match))
+            ),
         )
     return result
